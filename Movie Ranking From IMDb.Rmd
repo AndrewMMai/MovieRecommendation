@@ -1,0 +1,252 @@
+---
+title: "Movie Ranking and Recommendation From IMDb"
+output:
+  html_document:
+    df_print: paged
+  html_notebook: default
+  pdf_document: default
+---
+
+
+```{r}
+#Code chunk for loading all the libraries necessary to extract, manipulate and display the data extracted
+
+library(tidyverse)
+library(rvest)
+library(ggplot2)
+library(scales)
+library(tinytex)
+library(knitr)
+```
+
+```{r}
+#Code chunk for extracting the title elements from the IMDb webpage
+
+title_1<-read_html("https://www.imdb.com/list/ls000021718/")%>%
+  html_nodes("h3 a")%>%
+  html_text()#%>%
+  #as.list()
+#title_1
+```
+
+
+```{r}
+#Code chunk for extracting the year elements from the IMDb webpage
+
+year_1<-read_html("https://www.imdb.com/list/ls000021718/")%>%
+  html_nodes("h3 span.lister-item-year.text-muted.unbold")%>%
+  html_text()%>%
+  as.list()%>%
+  str_sub(start = 2,end = 5)
+year_1[16]="2013"
+year_1[17]="2017"
+year_1[43]="2010"
+year_1<-as.character(year_1)#%>%
+  #as.list()
+#year_1
+```
+```{r}
+#Code chunk for extracting the genre elements from the IMDb webpage
+
+genre_1<-read_html("https://www.imdb.com/list/ls000021718/")%>%
+  html_nodes("span.genre")%>%
+  html_text()%>%
+  str_split("\n")%>%
+  lapply(function(genre){genre[2]})%>%
+  str_split(",")%>%
+  lapply(function(genre){genre[1]})%>%
+  as.character()
+#genre_1
+```
+```{r}
+#Code chunk for extracting the gross earning elements from the IMDb webpage
+
+  gross_earnings<-read_html("https://www.imdb.com/list/ls000021718/")%>%
+  html_nodes("p span")%>%
+  html_text()
+  gross_earnings_1<-gross_earnings[c(seq(11,352,by=11),seq(361,548,by=11))]
+#gross_earnings_1
+```
+```{r}
+#Code chunk for converting the extracted gross earning elements into numerical values
+
+Gross_Earnings<-gross_earnings_1%>%
+  as.list()%>%
+  str_sub(start = 2,end = 7)%>%
+  as.numeric()
+#Gross_Earnings
+```
+
+
+```{r}
+#Code chunk for extracting the rating elements from the IMDb webpage
+
+rating<-read_html("https://www.imdb.com/list/ls000021718/")%>%
+  html_nodes("span.ipl-rating-star__rating")%>%
+  html_text()
+rating_1<-rating[seq(1,1150,by=23)]%>%
+  as.numeric()
+  #as.list()
+#rating_1
+```
+```{r}
+#Code chunk for extracting the TV rating elements from the IMDb webpage
+#Check final table to see difference between "TV ratings" and "ratings"
+
+TV_rating_1<-read_html("https://www.imdb.com/list/ls000021718/")%>%
+  html_nodes("span.certificate")%>%
+  html_text()#%>%
+  #as.list()
+TV_rating_1<-c(TV_rating_1[1:32],"R",TV_rating_1[33:49])%>%
+  as.character()
+#TV_rating_1
+```
+```{r}
+#Code chunk for creating a tibble containing all the elements extracted above
+#Note difference between "TV ratings" and "ratings"
+
+movie_ranking<-tibble(Ranking=c(1:50),Title=title_1,Rating=rating_1,Release_Year=year_1,Genre=genre_1,Gross__Earnings=gross_earnings_1,Value_In_Millions=Gross_Earnings,TV_Rating=TV_rating_1)
+#movie_ranking
+```
+```{r}
+#Code segment for obtaining the average rating of action movies
+
+avg_rating_action<-movie_ranking%>%
+  select(Rating)%>%
+  filter(genre_1=="Action")%>%
+  unlist()%>%
+  as.numeric()%>%
+  mean()
+#avg_rating_action
+```
+```{r}
+#Code segment for obtaining the average rating of adventure movies
+
+avg_rating_adventure<-movie_ranking%>%
+  select(Rating)%>%
+  filter(genre_1=="Adventure")%>%
+  unlist()%>%
+  as.numeric()%>%
+  mean()
+#avg_rating_adventure
+```
+```{r}
+#Code segment for obtaining the average rating of drama movies
+
+avg_rating_drama<-movie_ranking%>%
+  select(Rating)%>%
+  filter(genre_1=="Drama")%>%
+  unlist()%>%
+  as.numeric()%>%
+  mean()
+#avg_rating_drama
+```
+```{r}
+#Code segment for obtaining the average rating of animation movies
+
+avg_rating_animation<-movie_ranking%>%
+  select(Rating)%>%
+  filter(genre_1=="Animation")%>%
+  unlist()%>%
+  as.numeric()%>%
+  mean()
+#avg_rating_animation
+```
+```{r}
+#Code segment for obtaining the average rating of crime movies
+
+avg_rating_crime<-movie_ranking%>%
+  select(Rating)%>%
+  filter(genre_1=="Crime")%>%
+  unlist()%>%
+  as.numeric()%>%
+  mean()
+#avg_rating_crime
+```
+```{r}
+#Code chunk for creating a tibble containing the average ratings of all the genres
+
+avg_rating_table<-tibble(Average_Rating=c(avg_rating_action,
+                                          avg_rating_adventure,
+                                          avg_rating_animation,
+                                          avg_rating_crime,
+                                          avg_rating_drama),
+                         Genre=c("Action","Adventure",
+                                 "Animation","Crime","Drama"))
+#avg_rating_table
+```
+
+```{r}
+#Code chunk to create a column plot of the gross earnings against the movie genres
+
+grossEarningsVSgenre_plot<-ggplot(movie_ranking,aes(x=Genre,y=Value_In_Millions))+geom_col(fill="blue")+scale_y_continuous(labels = label_dollar(unit = "$",suffix = "M"))+ggtitle("GROSS EARNINGS IN DOLLARS AGAINST GENRES")+labs(y="Gross Earnings in Millions of Dollars")
+#grossEarningsVSgenre_plot
+```
+```{r}
+#Code chunk to create a column plot of the gross earnings against the TV Ratings
+
+grossEarningsvsTVRatings_plot<-ggplot(movie_ranking,aes(x=TV_Rating,y=Value_In_Millions))+geom_col(fill="red")+scale_y_continuous(labels=label_dollar(unit="$",suffix = "M"))+ggtitle("GROSS EARNINGS IN DOLLARS AGAINST TV RATINGS")+labs(y="Gross Earnings in Millions of Dollars")
+#grossEarningsvsTVRatings_plot
+```
+```{r}
+#Code chunk to create a scatter plot of the movie ratings against the movie genres
+
+ratingsVSGenres_plot<-ggplot(movie_ranking,aes(x=Genre,y=Rating),shape=8)+geom_point(fill="yellow")+ggtitle("MOVIE RATINGS AGAINST MOVIE GENRES")
+#ratingsVSGenres_plot
+```
+
+```{r}
+#Code chunk to create a tibble of the average ratings of the movie genres
+
+avg_rating_table<-tibble(Average_Rating=c(avg_rating_action,avg_rating_adventure,
+                                 avg_rating_animation,avg_rating_crime,avg_rating_drama),Genre=c("Action",
+                                                                                                 "Adventure","Animation","Crime","Drama"))
+#avg_rating_table
+```
+```{r}
+#Code chunk to create a scatter plot of the average ratings of movies against the movie genres
+
+avgRatingsvsgenre_plot<-ggplot(avg_rating_table,aes(x=Genre,y=Average_Rating))+geom_point(shape=16)
+avgRatingsvsgenre_plot
+```
+```{r}
+#Code chunk to find the total sum of gross earnings of action and crime movies respectively
+
+value_1<-movie_ranking%>%filter(genre_1=="Action")%>%summarise(sum(Gross_Earnings))
+value_2<-movie_ranking%>%filter(genre_1=="Crime")%>%summarise(sum(Gross_Earnings))
+```
+```{r}
+#Code chunk to obtain the highest rated movie and lowest rated movie respectively from the "movie_ranking" tibble
+
+highest_rated_movie<-movie_ranking%>%
+  filter(Rating==max(Rating))%>%
+  select(Title)%>%
+  as.list()%>%
+  as.character()
+#highest_rated_movie
+
+lowest_rated_movie<-movie_ranking%>%
+  filter(Rating==min(Rating))%>%
+  select(Title)%>%
+  as.list()%>%
+  as.character()
+#lowest_rated_movie
+```
+```{r}
+#Code chunk for obtaining the lowest and highest movie ratings from the "movie_ranking" tibble
+
+lowest_movie_rating<-min(movie_ranking$Rating)
+#lowest_movie_rating
+
+highest_movie_rating<-max(movie_ranking$Rating)
+#highest_movie_rating
+```
+
+
+
+
+
+
+
+
+

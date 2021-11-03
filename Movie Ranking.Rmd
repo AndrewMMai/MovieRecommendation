@@ -1,0 +1,192 @@
+---
+title: "Movie Ranking and Recommendation(From IMDb)"
+author: "MUIRURI ANDREW MAINGI"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+**YEAR: 2021**
+
+
+This is my report based on the top 50 highest-grossing movies for the time period between **2010 and 2020**.
+Below, we have 4 plots:
+
+**(i)   Plot of Gross Earnings in Dollars Against Movie Genres**
+
+**(ii)  Plot of Gross Earnings in Dollars Against Movie TV Ratings**
+
+**(iii) Plot of Movie Ratings Against Movie Genres**
+
+**(iv)  Plot of Average Rating of Movies Against Genres**
+
+```{r setup, echo=TRUE}
+library(dplyr)
+library(stringr)
+library(magrittr)
+library(rvest)
+library(ggplot2)
+library(scales)
+library(tinytex)
+
+title_1<-read_html("https://www.imdb.com/list/ls000021718/")%>%
+  html_nodes("h3 a")%>%
+  html_text()#%>%
+  #as.list()
+#title_1
+
+year_1<-read_html("https://www.imdb.com/list/ls000021718/")%>%
+  html_nodes("h3 span.lister-item-year.text-muted.unbold")%>%
+  html_text()%>%
+  as.list()%>%
+  str_sub(start = 2,end = 5)
+year_1[16]="2013"
+year_1[17]="2017"
+year_1[43]="2010"
+year_1<-as.character(year_1)#%>%
+  #as.list()
+#year_1
+
+genre_1<-read_html("https://www.imdb.com/list/ls000021718/")%>%
+  html_nodes("span.genre")%>%
+  html_text()%>%
+  str_split("\n")%>%
+  lapply(function(genre){genre[2]})%>%
+  str_split(",")%>%
+  lapply(function(genre){genre[1]})%>%
+  as.character()
+#genre_1
+
+  gross_earnings<-read_html("https://www.imdb.com/list/ls000021718/")%>%
+  html_nodes("p span")%>%
+  html_text()
+  gross_earnings_1<-gross_earnings[c(seq(11,352,by=11),seq(361,548,by=11))]
+#gross_earnings_1
+  
+  Gross_Earnings<-gross_earnings_1%>%
+  as.list()%>%
+  str_sub(start = 2,end = 7)%>%
+  as.numeric()
+#Gross_Earnings
+  
+  rating<-read_html("https://www.imdb.com/list/ls000021718/")%>%
+  html_nodes("span.ipl-rating-star__rating")%>%
+  html_text()
+rating_1<-rating[seq(1,1150,by=23)]#%>%
+  #as.list()
+#rating_1
+
+TV_rating_1<-read_html("https://www.imdb.com/list/ls000021718/")%>%
+  html_nodes("span.certificate")%>%
+  html_text()#%>%
+  #as.list()
+TV_rating_1<-c(TV_rating_1[1:32],"R",TV_rating_1[33:49])
+#TV_rating_1
+
+movie_ranking<-tibble(Ranking=c(1:50),Title=title_1,Rating=rating_1,Release_Year=year_1,Genre=genre_1,Gross__Earnings=gross_earnings_1,TV_Rating=TV_rating_1)
+movie_ranking
+
+avg_rating_action<-movie_ranking%>%
+  select(Rating)%>%
+  filter(genre_1=="Action")%>%
+  unlist()%>%
+  as.numeric()%>%
+  mean()
+#avg_rating_action
+
+avg_rating_adventure<-movie_ranking%>%
+  select(Rating)%>%
+  filter(genre_1=="Adventure")%>%
+  unlist()%>%
+  as.numeric()%>%
+  mean()
+#avg_rating_adventure
+
+avg_rating_drama<-movie_ranking%>%
+  select(Rating)%>%
+  filter(genre_1=="Drama")%>%
+  unlist()%>%
+  as.numeric()%>%
+  mean()
+#avg_rating_drama
+
+avg_rating_animation<-movie_ranking%>%
+  select(Rating)%>%
+  filter(genre_1=="Animation")%>%
+  unlist()%>%
+  as.numeric()%>%
+  mean()
+#avg_rating_animation
+
+avg_rating_crime<-movie_ranking%>%
+  select(Rating)%>%
+  filter(genre_1=="Crime")%>%
+  unlist()%>%
+  as.numeric()%>%
+  mean()
+#avg_rating_crime
+
+
+avg_rating_table<-tibble(Average_Rating=c(avg_rating_action,
+                                          avg_rating_adventure,
+                                          avg_rating_animation,
+                                          avg_rating_crime,
+                                          avg_rating_drama),
+                         Genre=c("Action","Adventure",
+                                 "Animation","Crime","Drama"))
+#avg_rating_table
+
+
+grossEarningsVSgenre_plot<-ggplot(movie_ranking,aes(x=Genre,y=Gross_Earnings))+geom_col(fill="blue")+scale_y_continuous(labels = label_dollar(unit = "$",suffix = "M"))+ggtitle("GROSS EARNINGS IN DOLLARS AGAINST GENRES")+labs(y="Gross Earnings in Millions of Dollars")
+grossEarningsVSgenre_plot
+
+grossEarningsvsTVRatings_plot<-ggplot(movie_ranking,aes(x=TV_Rating,y=Gross_Earnings))+geom_col(fill="red")+scale_y_continuous(labels=label_dollar(unit="$",suffix = "M"))+ggtitle("GROSS EARNINGS IN DOLLARS AGAINST TV RATINGS")+labs(y="Gross Earnings in Millions of Dollars")
+grossEarningsvsTVRatings_plot
+
+ratingsVSGenres_plot<-ggplot(movie_ranking,aes(x=Genre,y=Rating),shape=8)+geom_point()+ggtitle("MOVIE RATINGS AGAINST MOVIE GENRES")
+ratingsVSGenres_plot
+
+avgRatingsvsgenre_plot<-ggplot(avg_rating_table,aes(x=Genre,y=Average_Rating))+geom_point(shape=16)+ggtitle("MOVIE AVERAGE RATINGS AGAINST MOVIE GENRES")
+avgRatingsvsgenre_plot
+
+value_1<-movie_ranking%>%filter(genre_1=="Action")%>%summarise(sum(Gross_Earnings))
+value_2<-movie_ranking%>%filter(genre_1=="Crime")%>%summarise(sum(Gross_Earnings))
+
+highest_rated_movie<-movie_ranking%>%
+  filter(Rating==max(Rating))%>%
+  select(Title)%>%
+  as.list()%>%
+  as.character()
+#highest_rated_movie
+
+lowest_rated_movie<-movie_ranking%>%
+  filter(Rating==min(Rating))%>%
+  select(Title)%>%
+  as.list()%>%
+  as.character()
+#lowest_rated_movie
+
+lowest_movie_rating<-min(movie_ranking$Rating)
+#lowest_movie_rating
+
+highest_movie_rating<-max(movie_ranking$Rating)
+#highest_movie_rating
+
+
+```
+
+
+
+
+From the tables and plots, we can observe that:
+
+1. **Action** movies had the **highest** total gross earnings of 
+`r value_1` million dollars while **crime** movies had the **lowest** total gross earnings of `r value_2` million dollars.
+2. Movies with TV Rating **"PG-13"** had the **highest** total gross earnings while those rated **"R"** had the **lowest**.
+3. **Crime** had the **highest average rating** of `r avg_rating_crime` while **adventure** movies had the **least average rating** of `r round(avg_rating_adventure,3)`
+4.The **lowest-rated movie** was **`r lowest_rated_movie`** at `r lowest_movie_rating` while the **highest-rated movie** was **The Dark Knight** at `r highest_movie_rating`, both being **action** movies.
+
+**CONCLUSION**: We can therefore conclude that, ***between 2010 and 2020***, an ***action*** and/or ***crime*** movie rated ***PG-13*** has the best chance of having the highest gross earnings and doing well in the movie market.
+
+**NOTE**:The above data was obtained from [IMDb](https://www.imdb.com/list/ls000021718/).The above data, plots and tables are accurate as of 24th October, 2021. *The data may vary with time.*
+
